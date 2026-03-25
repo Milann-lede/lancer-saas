@@ -1,8 +1,6 @@
 import OpenAI from 'openai'
 import type { LineItem } from '@/types'
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-
 export interface GenerateQuoteInput {
   projectDescription: string
   clientName: string
@@ -18,6 +16,7 @@ export interface GeneratedQuote {
 }
 
 export async function generateQuoteWithAI(input: GenerateQuoteInput): Promise<GeneratedQuote> {
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   const prompt = `Tu es un expert en tarification freelance.
 Génère un devis professionnel en JSON basé sur cette description de projet.
 
@@ -66,6 +65,7 @@ export async function generateReminderEmail(params: {
   daysOverdue: number
   freelancerName: string
 }): Promise<{ subject: string; body: string }> {
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   const urgency = params.daysOverdue < 14 ? 'courtoise' : params.daysOverdue < 30 ? 'ferme' : 'mise en demeure'
 
   const prompt = `Rédige un email de relance de paiement ${urgency} en français.
