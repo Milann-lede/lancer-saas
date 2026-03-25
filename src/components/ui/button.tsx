@@ -57,4 +57,25 @@ function Button({
   )
 }
 
-export { Button, buttonVariants }
+// ButtonLink: renders a Next.js Link styled as a button (replaces asChild pattern)
+import Link from 'next/link'
+function ButtonLink({
+  href,
+  className,
+  variant = 'default',
+  size = 'default',
+  children,
+  ...props
+}: React.AnchorHTMLAttributes<HTMLAnchorElement> & VariantProps<typeof buttonVariants> & { href: string }) {
+  return (
+    <Link
+      href={href}
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+    >
+      {children}
+    </Link>
+  )
+}
+
+export { Button, ButtonLink, buttonVariants }
