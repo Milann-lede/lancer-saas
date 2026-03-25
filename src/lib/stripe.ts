@@ -1,8 +1,20 @@
 import Stripe from 'stripe'
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2026-02-25.clover',
-})
+// Lazy singleton — avoids instantiation at build time when env vars are placeholders
+export function getStripe(): Stripe {
+  return new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    apiVersion: '2026-02-25.clover',
+  })
+}
+
+// Backwards-compat alias used by route handlers
+export const stripe = {
+  get customers() { return getStripe().customers },
+  get checkout() { return getStripe().checkout },
+  get billingPortal() { return getStripe().billingPortal },
+  get subscriptions() { return getStripe().subscriptions },
+  get webhooks() { return getStripe().webhooks },
+} as unknown as Stripe
 
 export const PLANS = {
   starter: {
