@@ -1,8 +1,5 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM = process.env.RESEND_FROM_EMAIL ?? 'noreply@lancer.app'
-
 export async function sendInvoiceEmail(params: {
   to: string
   clientName: string
@@ -12,6 +9,8 @@ export async function sendInvoiceEmail(params: {
   dueDate: string
   paymentLink?: string
 }) {
+  const resend = new Resend(process.env.RESEND_API_KEY)
+  const FROM = process.env.RESEND_FROM_EMAIL ?? 'noreply@lancer.app'
   const { to, clientName, freelancerName, invoiceNumber, total, dueDate, paymentLink } = params
 
   const html = `
@@ -61,6 +60,8 @@ export async function sendReminderEmail(params: {
   daysOverdue: number
   paymentLink?: string
 }) {
+  const resend = new Resend(process.env.RESEND_API_KEY)
+  const FROM = process.env.RESEND_FROM_EMAIL ?? 'noreply@lancer.app'
   const { to, clientName, freelancerName, invoiceNumber, total, daysOverdue, paymentLink } = params
 
   const urgency = daysOverdue < 14 ? 'Rappel' : daysOverdue < 30 ? 'Deuxième relance' : 'Mise en demeure'
