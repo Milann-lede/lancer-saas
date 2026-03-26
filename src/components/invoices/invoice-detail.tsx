@@ -1,11 +1,11 @@
 'use client'
 
-import { useTransition } from 'react'
+import { useTransition, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button, ButtonLink, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Send, CheckCircle, Trash2, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Send, CheckCircle, Trash2, ExternalLink, Loader2, RotateCcw, Mail } from 'lucide-react'
 import { formatCurrency, formatDate, STATUS_LABELS, STATUS_COLORS } from '@/lib/utils/format'
 import { updateInvoiceStatusAction, deleteInvoiceAction } from '@/actions/invoices'
 import type { Invoice } from '@/types'
@@ -13,6 +13,32 @@ import type { Invoice } from '@/types'
 export function InvoiceDetail({ invoice }: { invoice: Invoice }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [isSending, setIsSending] = useState(false)
+
+  const clientEmail = (invoice.client as { email?: string } | null)?.email
+
+  async function handleSendEmail() {
+    if (!clientEmail) {
+      toast.error("Ce client n'a pas d'adresse email enregistrée")
+      return
+    }
+    setIsSending(true)
+    try {
+      const res = await fetch('/api/send-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoiceId: invoice.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? "Erreur lors de l'envoi")
+      toast.success(`Facture envoyée à ${clientEmail}`)
+      router.refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erreur lors de l'envoi")
+    } finally {
+      setIsSending(false)
+    }
+  }
 
   function updateStatus(status: string) {
     startTransition(async () => {
@@ -32,32 +58,53 @@ export function InvoiceDetail({ invoice }: { invoice: Invoice }) {
   }
 
   const lineItems = invoice.line_items as { description: string; quantity: number; unit_price: number; vat_rate: number }[]
+  const isWorking = isPending || isSending
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <ButtonLink href="/invoices" variant="ghost" size="sm"><ArrowLeft className="w-4 h-4 mr-1" />Factures</ButtonLink>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {invoice.status === 'draft' && (
-            <Button size="sm" onClick={() => updateStatus('sent')} disabled={isPending}>
-              <Send className="w-4 h-4 mr-2" />Marquer envoyée
+            <Button size="sm" onClick={handleSendEmail} disabled={isWorking || !clientEmail}>
+              {isSending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Envoi...</> : <><Send className="w-4 h-4 mr-2" />Envoyer par email</>}
             </Button>
           )}
           {(invoice.status === 'sent' || invoice.status === 'overdue') && (
-            <Button size="sm" onClick={() => updateStatus('paid')} disabled={isPending} className="bg-green-600 hover:bg-green-700">
-              <CheckCircle className="w-4 h-4 mr-2" />Marquer payée
-            </Button>
+            <>
+              <Button size="sm" variant="outline" onClick={handleSendEmail} disabled={isWorking || !clientEmail} title={clientEmail ? `Renvoyer à ${clientEmail}` : "Email client manquant"}>
+                {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4 mr-2" />}
+                {!isSending && 'Renvoyer'}
+              </Button>
+              <Button size="sm" onClick={() => updateStatus('paid')} disabled={isWorking} className="bg-green-600 hover:bg-green-700">
+                <CheckCircle className="w-4 h-4 mr-2" />Marquer payée
+              </Button>
+            </>
           )}
           {invoice.stripe_payment_link && (
             <a href={invoice.stripe_payment_link} target="_blank" rel="noreferrer" className={buttonVariants({ size: 'sm', variant: 'outline' })}>
               <ExternalLink className="w-4 h-4 mr-2" />Lien de paiement
             </a>
           )}
-          <Button size="sm" variant="ghost" onClick={handleDelete} disabled={isPending} className="text-red-500 hover:text-red-700">
+          <Button size="sm" variant="ghost" onClick={handleDelete} disabled={isWorking} className="text-red-500 hover:text-red-700">
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>
       </div>
+
+      {/* Email info banner */}
+      {clientEmail && invoice.status === 'draft' && (
+        <div className="flex items-center gap-2 text-sm text-gray-500 bg-blue-50 border border-blue-100 rounded-lg px-4 py-2.5">
+          <Mail className="w-4 h-4 text-blue-500 shrink-0" />
+          <span>L&apos;email sera envoyé à <strong className="text-blue-700">{clientEmail}</strong></span>
+        </div>
+      )}
+      {!clientEmail && invoice.status === 'draft' && (
+        <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5">
+          <Mail className="w-4 h-4 shrink-0" />
+          <span>Ce client n&apos;a pas d&apos;email — <ButtonLink href="/clients" variant="link" className="h-auto p-0 text-amber-700 underline text-sm">ajouter un email client</ButtonLink></span>
+        </div>
+      )}
 
       <Card>
         <CardHeader className="flex flex-row items-start justify-between">

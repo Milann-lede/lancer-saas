@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
       paymentLink: invoice.stripe_payment_link ?? undefined,
     })
 
-    // Mark as sent
+    // Mark as sent (only from draft — don't downgrade overdue back to sent)
     await supabase.from('invoices').update({ status: 'sent' }).eq('id', invoiceId).eq('status', 'draft')
 
     return NextResponse.json({ success: true })
